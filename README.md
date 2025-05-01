@@ -7,8 +7,10 @@ This is an anomyzied github for the paper "A Physics-Informed In-Context Learnin
 This framework has been applied to the identification of interaction forces between a robotic arm and its environment. The proposed physics-informed in-context learning solution showed improved generalization when interacting with different environments, of different materials.
 
 **Inputs**:
-  -Cartesian positions (x, y, z),
-  - **Cartesian Velocities**: (ẋ, ẏ, ż)
-  - **Cartesian Accelerations**: (ẍ, ÿ, z̈)
-  - **Cartesian Target positions**: (xₜ, yₜ, zₜ)
+
+
+  - **Cartesian Positions**: (x, y, z),
+  - **Cartesian Velocities**: (ẋ, ẏ, ż),
+  - **Cartesian Accelerations**: (ẍ, ÿ, z̈),
+  - **Cartesian Target positions**: (xₜ, yₜ, zₜ),
   - **Cartesian Target velocities**: (ẋₜ, ẏₜ, żₜ)
