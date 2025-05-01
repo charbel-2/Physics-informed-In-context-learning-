@@ -12,3 +12,7 @@ This framework has been applied to the identification of interaction forces betw
   -Cartesian accelerations (\ddot{x}, \ddot{y}, \ddot{z}), 
   - Cartesian target positions (x_T, y_T, z_T),
   - Cartesian velocities (\dot{x}_T, \dot{y}_T, \dot{z}_T)
+  - **Velocities**: (ẋ, ẏ, ż)
+  - **Accelerations**: (ẍ, ÿ, z̈)
+  - **Target positions**: (xₜ, yₜ, zₜ)
+  - **Target velocities**: (ẋₜ, ẏₜ, żₜ)
