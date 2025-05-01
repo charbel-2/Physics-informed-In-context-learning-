@@ -20,3 +20,5 @@ This framework has been applied to the identification of interaction forces betw
 
   - **Interaction Forces**: (Fₓ, Fᵧ, F_z)
 
+
+This framework has been applied to Panda Franka Robotic Arm.
