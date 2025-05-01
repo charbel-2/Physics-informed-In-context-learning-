@@ -3,3 +3,5 @@
 This is an anomyzied github for the paper "A Physics-Informed In-Context Learning Framework for Online Interaction Prediction in Robotic Tasks".
 
 ![Figure 1: System architecture diagram](Images/Model_scheme.png)
+
+This framework has been applied to the identification of interaction forces between a robotic arm and its environment. The proposed physics-informed in-context learning solution showed improved generalization when interacting with different environments, of different materials.
