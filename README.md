@@ -14,3 +14,9 @@ This framework has been applied to the identification of interaction forces betw
   - **Cartesian Accelerations**: (ẍ, ÿ, z̈),
   - **Cartesian Target positions**: (xₜ, yₜ, zₜ),
   - **Cartesian Target velocities**: (ẋₜ, ẏₜ, żₜ)
+
+**Outputs**:
+
+
+  - **Interaction Forces**: (Fₓ, Fᵧ, F_z)
+
