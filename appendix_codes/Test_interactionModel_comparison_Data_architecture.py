@@ -360,5 +360,5 @@ for name, model_data in models.items():
         plt.xticks(fontsize=16)
         plt.yticks(fontsize=16)
         plt.grid(True)
-        plt.savefig(f'figures/comparison_Data_architecture/{file_path[9:-4]}_{name}_Comparison_prediction.pdf', format='pdf', bbox_inches='tight', dpi=300)
+        plt.savefig(f'figures/comparison_Data_architecture/{file_path[12:-4]}_{name}_Comparison_prediction.pdf', format='pdf', bbox_inches='tight', dpi=300)
         plt.show()
