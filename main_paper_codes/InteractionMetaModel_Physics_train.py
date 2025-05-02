@@ -270,19 +270,12 @@ try:
     embed_dim = 128
     num_heads = 4
 
-
-    # Load learned parameters from the JSON file
-    with open('learned_params_IDSIA_2_4_5_6__again.json', 'r') as f:
-        learned_params = json.load(f)
-    initial_params=learned_params if learned_params else {'inertia': 0.0157, 'damping': 0.0266, 'stiffness': 0.0485, 'random': 1.0}
-    print(initial_params)
-
-    # initial_params = {
-    #     'inertia': [0.0887, 0.0857, 0.027],   # Same inertia for X, Y, Z
-    #     'damping': [0.866, 0.02866, 0.266],  # Same damping for X, Y, Z
-    #     'stiffness': [0.13, 0.131, 0.52],  # Same stiffness for X, Y, Z
-    #     'random': [0.5, 0.5, 1.5]  # Same random offset for X, Y, Z
-    # }
+    initial_params = {
+        'inertia': [0.0887, 0.0857, 0.027],   # Same inertia for X, Y, Z
+        'damping': [0.866, 0.02866, 0.266],  # Same damping for X, Y, Z
+        'stiffness': [0.13, 0.131, 0.52],  # Same stiffness for X, Y, Z
+        'damping2': [0.5, 0.5, 1.5]  # Same random offset for X, Y, Z
+    }
 
     lower_bounds = {
         'J': [1e-6, 1e-6, 1e-6],  # Lower bounds for inertia across X, Y, Z
@@ -301,9 +294,9 @@ try:
         "R": criterion.R
     }
 
-    model = EnhancedTransformer(input_dim=18, n_heads=num_heads, n_layers=8, n_embd=embed_dim, forward_expansion=6,
-                                seq_len= seq_length, mean= relevant_mean, std= relevant_std, physics_params= physics_params).to(device)
-    
+    model = EnhancedTransformer(input_dim=18, n_heads=num_heads, n_layers=8, n_embd=embed_dim, forward_expansion=6, 
+                            seq_len= seq_length,seq_len_dec= len_dec, mean= relevant_mean, std= relevant_std, physics_params= physics_params) .to(device)
+
     wandb.init(project="meta-Franka-PhysicsInformed", name=f"Physics_Informed_train", reinit=True)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
@@ -465,13 +458,13 @@ try:
                 if loss_val < best_val_loss:
                     wandb.log({"iter_save": epoch})
                     best_val_loss = loss_val
-                    torch.save(model.state_dict(), 'Interaction_metamodel_physics'.pth)
+                    torch.save(model.state_dict(), 'Interaction_metamodel_physics.pth')
                     print("Model Saved!")
                 learned_params = {
                             'inertia': J.detach().cpu().tolist(),  # Convert to list for JSON compatibility
                             'damping': b.detach().cpu().tolist(),
                             'stiffness': k.detach().cpu().tolist(),
-                            'random': R.detach().cpu().tolist()
+                            'damping2': R.detach().cpu().tolist()
                             }
                 # Save the learned parameters to a JSON file
                 with open('learned_params_IDSIA_2_5_6__again.json', 'w') as f:

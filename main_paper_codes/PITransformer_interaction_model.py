@@ -68,7 +68,7 @@ class PhysicsBasedLoss(nn.Module):
         self.J = nn.Parameter(torch.tensor(initial_params['inertia'], dtype=torch.float32, device= self.device), requires_grad=False)
         self.b = nn.Parameter(torch.tensor(initial_params['damping'], dtype=torch.float32, device= self.device), requires_grad=False)
         self.k = nn.Parameter(torch.tensor(initial_params['stiffness'], dtype=torch.float32, device= self.device), requires_grad=False)
-        self.R = nn.Parameter(torch.tensor(initial_params['random'], dtype=torch.float32, device= self.device), requires_grad = False)
+        self.R = nn.Parameter(torch.tensor(initial_params['damping2'], dtype=torch.float32, device= self.device), requires_grad = False)
         self.lower_bounds = {k: torch.tensor(v, dtype=torch.float32, device= self.device) for k, v in lower_bounds.items()}
 
         # Getters to share the parameters with other classes
@@ -386,15 +386,15 @@ class PhysicsAwareEmbedding(nn.Module):
         x_weighted = x * self.weights  # Element-wise scaling
 
         # Compute explicit physics-informed features
-        kinetic_energy =   self.J * (accelerations)  # (B, T, D)
+        acceleration_term =   self.J * (accelerations)  # (B, T, D)
         damping_force = self.b * torch.sign(target_velocities) + self.R*target_velocities# (B, T, D)
         elastic_force = self.k * (positions - target_positions)  # (B, T, D)
-        residual_force = interaction_forces - ( elastic_force + kinetic_energy + damping_force)  # (B, T, D)
+        residual_force = interaction_forces - ( elastic_force + acceleration_term + damping_force)  # (B, T, D)
 
         # Concatenate raw inputs with physics-based features
         physics_features = torch.cat([
             x_weighted,  # Full 15 features
-            kinetic_energy.mean(dim=-1, keepdim=True),  # Convert (B, T, 3) → (B, T, 1)
+            acceleration_term.mean(dim=-1, keepdim=True),  # Convert (B, T, 3) → (B, T, 1)
             damping_force.mean(dim=-1, keepdim=True),  
             elastic_force.mean(dim=-1, keepdim=True),
             residual_force.mean(dim=-1, keepdim=True)  
@@ -449,7 +449,7 @@ class EnhancedTransformer(nn.Module):
         self.stiffness_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
         self.inertia_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
         self.damping_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
-        self.random_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
+        self.damping2_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
         
         self.decoder_output = nn.Linear(n_embd, 3, bias= True).to(device)  # Output layer for torque prediction
         
@@ -512,11 +512,11 @@ class EnhancedTransformer(nn.Module):
         estimated_stiffness = F.softplus(torch.mean(self.stiffness_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
         estimated_inertia = F.softplus(torch.mean(self.inertia_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
         estimated_damping = F.softplus(torch.mean(self.damping_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
-        estimated_random = F.softplus(torch.mean(self.random_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
+        estimated_damping2 = F.softplus(torch.mean(self.damping2_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
         
         decoder_output = self.norm1(decoder_output)
         
         
         
         
-        return self.decoder_output(decoder_output),estimated_inertia, estimated_damping,estimated_stiffness, estimated_random  # Predict based on the last time step
+        return self.decoder_output(decoder_output),estimated_inertia, estimated_damping,estimated_stiffness, estimated_damping2  # Predict based on the last time step
