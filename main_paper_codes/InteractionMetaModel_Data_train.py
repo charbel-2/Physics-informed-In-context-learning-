@@ -398,7 +398,7 @@ try:
                 if loss_val < best_val_loss:
                     wandb.log({"iter_save": epoch})
                     best_val_loss = loss_val
-                    torch.save(model.state_dict(), 'Interaction_metamodel_data'.pth)
+                    torch.save(model.state_dict(), 'Interaction_metamodel_data.pth')
                     print("Model Saved!")
                
 except KeyboardInterrupt:
