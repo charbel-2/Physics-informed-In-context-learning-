@@ -21,9 +21,9 @@ torch.cuda.manual_seed_all(SEED)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Path to your CSV file
-csv_file_path_sponge1 = 'Test_Sponge1.csv'  
-csv_file_path_sponge2 = 'Test_Sponge2.csv'  
-csv_file_path_sponge3 = 'Test_sponge3.csv'  
+csv_file_path_sponge1 = '../Test_Sponge1.csv'  
+csv_file_path_sponge2 = '../Test_Sponge2.csv'  
+csv_file_path_sponge3 = '../Test_sponge3.csv'  
 
 # Load the CSV into a pandas DataFrame
 df = pd.read_csv(csv_file_path_sponge1)
@@ -270,8 +270,8 @@ try:
 
 
     # Choice of the regularization parameter of the physics loss
-    for lam_phy in np.arange(0,0.8,0.05):
-        lam_phy = round(lam_phy,2)
+    for lam_phy in np.arange(0,0.8,0.1):
+        lam_phy = round(lam_phy,1)
         # Load learned parameters from the JSON file
         with open(f'learned_params_IDSIA_2_4_5_6__again.json', 'r') as f:
             learned_params = json.load(f)
