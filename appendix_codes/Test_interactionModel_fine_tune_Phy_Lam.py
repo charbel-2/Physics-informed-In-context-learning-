@@ -411,6 +411,6 @@ plt.legend(fontsize=16)
 plt.xticks(fontsize=16)
 plt.yticks(fontsize=16)
 plt.grid(True)
-plt.savefig(f'figures/fine_tune_Phy_Lam/{file_path[9:-4]}_Comparison_prediction.pdf', format='pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'figures/fine_tune_Phy_Lam/{file_path[12:-4]}_Comparison_prediction.pdf', format='pdf', bbox_inches='tight', dpi=300)
 plt.show()
 
