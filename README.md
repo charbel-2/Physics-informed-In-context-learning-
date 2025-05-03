@@ -34,6 +34,8 @@ This framework has been applied to Panda Franka Robotic Arm.
 
 Run any of the codes with the corresponding [datasets](./Datasets/) for the training, which will save a model 'Interaction_metamodel_physics.pth' or 'Interaction_metamodel_data.pth', for the physics-informed or data-driven models, respectively, every 200 epochs. 
 
+Please note that the models will try to utilize "cuda" if available, if not, the training process may be slow.
+
 # Managing evaluation
 
 ## [Main paper evaluation](./main_paper_codes/)
