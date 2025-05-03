@@ -15,11 +15,11 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED) 
 
 # Set the device (GPU if available, else CPU)
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # Load the dataset
-file_path= '../Datasets/Test_Sponge4.csv'  
+file_path= 'Test_IDSIA7.csv'  
 # file_path= '../Datasets/Test_Table.csv'  # Table csv
 df = pd.read_csv(file_path)
 
@@ -35,12 +35,12 @@ target_z = ['target_position_z']
 speed_x = ['velocity_x']
 speed_y = ['velocity_y']
 speed_z = ['velocity_z']
-torque_x = ['force_x']
-torque_y = ['force_y']
-torque_z = ['force_z']
+force_x = ['force_x']
+force_y = ['force_y']
+force_z = ['force_z']
 
 relevant_columns = joint_x + joint_y + joint_z + target_x + target_y + target_z + speed_x + speed_y + speed_z
-relevant_outputs = torque_x + torque_y + torque_z
+relevant_outputs = force_x + force_y + force_z
 
 # Filter the DataFrame for relevant columns and drop NaN values
 data = df[relevant_columns].dropna()
@@ -121,9 +121,9 @@ downsampled_relevant['target_velocity_z'] = savgol_filter(target_velocity_z, win
 downsampled_relevant['acceleration_x'] = acceleration_x
 downsampled_relevant['acceleration_y'] = acceleration_y
 downsampled_relevant['acceleration_z'] = acceleration_z
-downsampled_relevant['torque_x'] = downsampled_output['force_x'].copy()
-downsampled_relevant['torque_y'] = downsampled_output['force_y'].copy()
-downsampled_relevant['torque_z'] = downsampled_output['force_z'].copy()
+downsampled_relevant['force_x'] = downsampled_output['force_x'].copy()
+downsampled_relevant['force_y'] = downsampled_output['force_y'].copy()
+downsampled_relevant['force_z'] = downsampled_output['force_z'].copy()
 
 target_acceleration_x = np.zeros_like(position_x)
 target_acceleration_y = np.zeros_like(position_x)
@@ -292,14 +292,14 @@ with torch.no_grad():
         velocities = X_batch_norm[:, :, 6:9]
         target_velocities = X_batch_norm[:,:,9:12]
         accelerations = X_batch_norm[:, :, 12:15]
-        torques = X_batch_norm[:,:,15:18]
+        forces = X_batch_norm[:,:,15:18]
         
         positions_next = X_decoder_batch_norm[:,:,0:3].to(device)
         velocities_next = X_decoder_batch_norm[:,:,3:6].to(device)
         accelerations_next = X_decoder_batch_norm[:,:,6:9].to(device)
         
         # Forward pass
-        output, J,b,k,R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities, target_velocities, accelerations, torques,
+        output, J,b,k,R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities, target_velocities, accelerations, forces,
                     positions_next, velocities_next, accelerations_next)
         
         stiffness.append(k.detach().cpu().numpy())
