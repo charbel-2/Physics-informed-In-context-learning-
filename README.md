@@ -38,8 +38,8 @@ Run any of the codes with the corresponding [datasets](./Datasets/) for the trai
 
 ## [Main paper evaluation](./main_paper_codes/)
 
--[Physics-informed model testing](./main_paper_codes/Test_interactionModel_Physics.py)
--[Data-driven model testing](./main_paper_codes/Test_interactionModel_Physics.py) (still to be fixed)
+- [Physics-informed model testing](./main_paper_codes/Test_interactionModel_Physics.py)
+- [Data-driven model testing](./main_paper_codes/Test_interactionModel_Physics.py) (still to be fixed)
 
 You can run the evaluation of both physics-informed or data-driven models, on any of the [datasets](./Datasets/), after at least training for 200 epochs, so you may have a saved checkpoint.
 
