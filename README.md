@@ -28,10 +28,8 @@ This framework has been applied to Panda Franka Robotic Arm.
 ## [Main paper training](./main_paper_codes/)
 
 
-  -[Physics-informed model training](./main_paper_codes/InteractionMetaModel_Physics_train.py),
-  -[Data-driven model training](./main_paper_codes/InteractionMetaModel_Data_train.py)
-    - [Physics-informed model training](./main_paper_codes/InteractionMetaModel_Physics_train.py),
-    - [Data-driven model training](./main_paper_codes/InteractionMetaModel_Data_train.py),
+  - [Physics-informed model training](./main_paper_codes/InteractionMetaModel_Physics_train.py),
+  - [Data-driven model training](./main_paper_codes/InteractionMetaModel_Data_train.py)
 
 
 Run any of the codes with the corresponding [datasets](./Datasets/) for the training, which will save a model 'Interaction_metamodel_physics.pth' or 'Interaction_metamodel_data.pth', for the physics-informed or data-driven models, respectively, every 200 epochs. 
