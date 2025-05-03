@@ -25,4 +25,4 @@ This framework has been applied to Panda Franka Robotic Arm.
 
 # Managing training
 
-## 'main_paper_codes'
+## [Main_paper_codes](./main_paper_codes/)
