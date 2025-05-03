@@ -22,3 +22,7 @@ This framework has been applied to the identification of interaction forces betw
 
 
 This framework has been applied to Panda Franka Robotic Arm.
+
+# Managing training
+
+## 'main_paper_codes'
