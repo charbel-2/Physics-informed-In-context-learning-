@@ -26,3 +26,5 @@ This framework has been applied to Panda Franka Robotic Arm.
 # Managing training
 
 ## [Main_paper_codes](./main_paper_codes/)
+
+-[Physics-informed model training](./main_paper_codes/InteractionMetaModel_Physics_train.py)
