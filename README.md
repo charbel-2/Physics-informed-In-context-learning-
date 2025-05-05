@@ -58,4 +58,13 @@ In order to run and compare both models at the same time, resulting in the plots
   This script trains and compares different data-driven architectures as explained in Appendix B. The compared [models](./appendix_codes/DataDriven_interaction_model.py) include the data-driven transformer from the main paper, its decoder-only variant, a standard LSTM, a deeper variant, DeepSets, and a Time Convolutional Network (TCN).
 
 
+## [Fine tunining λₚₕᵧₛ](./appendix_codes)
+
+- [Fine tuning script](./appendix_codes/InteractionMetaModel_Physics_train_old_fine_tune_lam.py)
+
+This script trains the physics-informed transformer introduced in our paper, with different λₚₕᵧₛ, and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model.
+
+
+
+
 
