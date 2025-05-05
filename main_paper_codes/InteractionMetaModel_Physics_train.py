@@ -468,7 +468,7 @@ try:
                             'damping2': R.detach().cpu().tolist()
                             }
                 # Save the learned parameters to a JSON file
-                with open('learned_params_IDSIA_2_5_6__again.json', 'w') as f:
+                with open('learned_params_saved.json', 'w') as f:
                     json.dump(learned_params, f)
 except KeyboardInterrupt:
     print("closing gracefully")
