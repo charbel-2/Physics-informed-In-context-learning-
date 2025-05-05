@@ -49,7 +49,7 @@ class PhysicsBasedLoss(nn.Module):
     """
     Custom loss integrating physics-informed constraints into training.
     Includes:
-    - MSE between predicted and actual torques
+    - MSE between predicted and actual forces
     - Physics-consistent force computation using estimated J, b, k, R
     - A penalty on physical parameters if they fall below defined bounds
     """
@@ -74,8 +74,8 @@ class PhysicsBasedLoss(nn.Module):
         # Getters to share the parameters with other classes
     
 
-    def forward(self,predicted_torque, actual_torque, position, target_positions, velocity, target_velocity, acceleration, J, b, k, R):
-        mse_loss = self.mse_loss(predicted_torque, actual_torque).to(device)
+    def forward(self,predicted_force, actual_force, position, target_positions, velocity, target_velocity, acceleration, J, b, k, R):
+        mse_loss = self.mse_loss(predicted_force, actual_force).to(device)
         phsyics_force =    J * (acceleration)  + k * (position - target_positions) + R*target_velocity + b * torch.sign(target_velocity)
         with torch.no_grad():
             self.J.copy_(J)
@@ -83,7 +83,7 @@ class PhysicsBasedLoss(nn.Module):
             self.k.copy_(k)
             self.R.copy_(R)
         
-        physics_loss = self.mse_loss(predicted_torque, phsyics_force)
+        physics_loss = self.mse_loss(predicted_force, phsyics_force)
 
         # Penalty: enforce lower bounds on the physical parameters to avoid non-physical values
         penalty = sum(torch.sum(torch.relu(self.lower_bounds[param] - getattr(self, param)))
@@ -347,7 +347,7 @@ class PhysicsAwareEmbedding(nn.Module):
     * Kinetic energy
     * Damping force
     * Elastic force
-    * Residuals (torque - modeled force)
+    * Residuals (force - modeled force)
     - Applies learnable scaling, projection, and non-linearity
     """
 
@@ -446,12 +446,12 @@ class EnhancedTransformer(nn.Module):
             [TransformerDecoderLayer(n_embd, n_heads, forward_expansion, dropout, bias) for _ in range(n_layers)]
         ).to(device)
 
-        self.stiffness_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
-        self.inertia_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
-        self.damping_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
-        self.random_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
+        self.stiffness_operator = nn.Linear(n_embd, 3, bias=True).to(device) 
+        self.inertia_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
+        self.damping_operator = nn.Linear(n_embd, 3, bias=True).to(device) 
+        self.random_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
         
-        self.decoder_output = nn.Linear(n_embd, 3, bias= True).to(device)  # Output layer for torque prediction
+        self.decoder_output = nn.Linear(n_embd, 3, bias= True).to(device)  # Output layer for force prediction
         
     def DecoderEmbedding(self, decoder_input):
         
@@ -480,19 +480,19 @@ class EnhancedTransformer(nn.Module):
         # Combine physics-aware embedding and positional embedding
         return  tok_emb_encoder + pos_emb_encoder
 
-    def forward(self, x, decoder_input, positions, target_positions, velocities, target_velocities, accelerations, torques,
+    def forward(self, x, decoder_input, positions, target_positions, velocities, target_velocities, accelerations, forces,
                 positions_next, velocities_next, accelerations_next):
 
         physics_features = torch.cat(
-            [torques, accelerations, target_velocities, velocities, target_positions, positions], dim=-1
+            [forces, accelerations, target_velocities, velocities, target_positions, positions], dim=-1
         ) 
         
         physics_features_decoder = torch.cat(
             [accelerations_next, velocities_next, positions_next], dim=-1
         )
         
-        physics_emb_encoder = self.embedding(x, positions, target_positions, velocities, target_velocities, accelerations, torques).to(device)
-        physics_emb_decoder = self.embedding_output(decoder_input, positions, target_positions, velocities, target_velocities, accelerations_next, torques).to(device)
+        physics_emb_encoder = self.embedding(x, positions, target_positions, velocities, target_velocities, accelerations, forces).to(device)
+        physics_emb_decoder = self.embedding_output(decoder_input, positions, target_positions, velocities, target_velocities, accelerations_next, forces).to(device)
         
         x = self.EncoderEmbeding(x) + physics_emb_encoder
         decoder_input = self.DecoderEmbedding(decoder_input) + physics_emb_decoder
