@@ -23,9 +23,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # Path to your CSV file
-csv_file_path_sponge1 = 'Test_IDSIA6.csv'  
-csv_file_path_sponge2 = 'Test_IDSIA5.csv'  
-csv_file_path_sponge3 = 'Test_IDSIA2.csv'  
+csv_file_path_sponge1 = '../Test_Sponge1.csv'  
+csv_file_path_sponge2 = '../Test_Sponge2.csv'  
+csv_file_path_sponge3 = '../Test_sponge3.csv'   
 
 # Load the CSV into a pandas DataFrame
 df = pd.read_csv(csv_file_path_sponge1)

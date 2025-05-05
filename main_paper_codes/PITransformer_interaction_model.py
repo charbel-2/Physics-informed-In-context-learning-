@@ -435,8 +435,8 @@ class EnhancedTransformer(nn.Module):
         self.decoder_wte = nn.Linear(input_dim -9, n_embd).to(device)
         self.decoder_wpe = nn.Embedding(seq_len, n_embd).to(device)
         
-        self.positional_encoding_enc = PhysicsPositionalEncoding(n_embd, mean, std).to(device)
-        self.positional_encoding_dec = PhysicsPositionalEncoding(n_embd, mean, std).to(device)
+        self.positional_encoding= PhysicsPositionalEncoding(n_embd, mean, std).to(device)
+        # self.positional_encoding_dec = PhysicsPositionalEncoding(n_embd, mean, std).to(device)
         
         self.norm1 = LayerNorm(n_embd, bias=bias).to(device)
         self.encoder_layers = nn.ModuleList(
@@ -449,7 +449,7 @@ class EnhancedTransformer(nn.Module):
         self.stiffness_operator = nn.Linear(n_embd, 3, bias=True).to(device) 
         self.inertia_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
         self.damping_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
-        self.damping2_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
+        self.random_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
         
         self.decoder_output = nn.Linear(n_embd, 3, bias= True).to(device)  
         
@@ -497,8 +497,8 @@ class EnhancedTransformer(nn.Module):
         x = self.EncoderEmbeding(x) + physics_emb_encoder
         decoder_input = self.DecoderEmbedding(decoder_input) + physics_emb_decoder
         
-        x = self.positional_encoding_enc(x, physics_features)
-        decoder_input = self.positional_encoding_dec(decoder_input, physics_features)
+        x = self.positional_encoding(x, physics_features)
+        decoder_input = self.positional_encoding(decoder_input, physics_features)
         
         for layer in self.encoder_layers:
             x = layer(x, physics_features)
@@ -512,7 +512,7 @@ class EnhancedTransformer(nn.Module):
         estimated_stiffness = F.softplus(torch.mean(self.stiffness_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
         estimated_inertia = F.softplus(torch.mean(self.inertia_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
         estimated_damping = F.softplus(torch.mean(self.damping_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
-        estimated_damping2 = F.softplus(torch.mean(self.damping2_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
+        estimated_damping2 = F.softplus(torch.mean(self.random_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
         
         decoder_output = self.norm1(decoder_output)
         

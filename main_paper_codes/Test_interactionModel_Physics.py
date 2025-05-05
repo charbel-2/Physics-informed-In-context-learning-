@@ -19,7 +19,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # Load the dataset
-file_path= 'Test_IDSIA7.csv'  
+file_path= '../Datasets/Test_Sponge4.csv'  
 # file_path= '../Datasets/Test_Table.csv'  # Table csv
 df = pd.read_csv(file_path)
 
@@ -242,7 +242,7 @@ physics_params = {
 model = EnhancedTransformer(input_dim=18, n_heads=num_heads, n_layers=8, n_embd=embed_dim, forward_expansion=6, 
                             seq_len= seq_length,seq_len_dec= len_dec, mean= relevant_mean, std= relevant_std, physics_params= physics_params) .to(device)
 
-
+# Please use 'Interaction_metamodel_physics_test.pth' to run the trained model from the main paper
 model.load_state_dict(torch.load('Interaction_metamodel_physics.pth', weights_only= True, map_location= torch.device('cpu'))) 
 
 model.eval()
