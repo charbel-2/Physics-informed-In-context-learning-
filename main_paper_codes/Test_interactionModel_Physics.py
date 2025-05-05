@@ -25,7 +25,7 @@ df = pd.read_csv(file_path)
 
 start = 0
 
-# Select relevant columns for modeling: positions, velocities, and torques
+# Select relevant columns for modeling: positions, velocities, and forces
 joint_x = ['franka_ee_pose_x']
 joint_y = ['franka_ee_pose_y']
 joint_z = ['franka_ee_pose_z']
