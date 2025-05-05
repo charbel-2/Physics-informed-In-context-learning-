@@ -43,7 +43,6 @@ Please note that the models will try to utilize "cuda" if available, if not, the
 - [Physics-informed model testing](./main_paper_codes/Test_interactionModel_Physics.py)
 - [Data-driven model testing](./main_paper_codes/Test_interactionModel_Physics.py) (still to be fixed)
 
-You can run the evaluation of both physics-informed or data-driven models, on any of the [datasets](./Datasets/), after at least training for 200 epochs, so you may have a saved checkpoint.
-
+Training scripts will save a checkpoint every 200 epochs, so if you want to evaluate the performances, without waiting for the complete training to end, you can run the "Test" codes on any of the [datasets](./Datasets/). 
 
 
