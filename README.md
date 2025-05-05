@@ -53,6 +53,9 @@ In order to run and compare both models at the same time, resulting in the plots
 
 ## [Comparison of data-driven acrhitectures](./appendix_codes)
 
+- [Comparison script](./appendix_codes/InteractionMetaModel_Data_train_comparison_architecture.py)
+
+  This script trains and compares different data-driven architectures as explained in Appendix B. The compared [models](./appendix_codes/DataDriven_interaction_model.py) include the data-driven transformer from the main paper, its decoder-only variant, a standard LSTM, a deeper variant, DeepSets, and a Time Convolutional Network (TCN).
 
 
 
