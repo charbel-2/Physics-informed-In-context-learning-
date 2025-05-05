@@ -191,7 +191,8 @@ model_data = EnhancedTransformerData(input_dim= 18, n_heads= num_heads, n_layers
                                      seq_len= seq_length, mean= relevant_mean, std= relevant_std).to(device)
 
 # Load the model weights
-model_data.load_state_dict(torch.load('Interaction_metamodel_data_IDSIA_2_4_5_6_again.pth', weights_only= True))
+# Please use 'Interaction_metamodel_data_test.pth' to plot the performances from main paper
+model_data.load_state_dict(torch.load('Interaction_metamodel_data.pth', weights_only= True))
 
 
 predictions_data = []
