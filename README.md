@@ -49,3 +49,10 @@ Training scripts will save a checkpoint every 200 epochs, so if you want to eval
 In order to run and compare both models at the same time, resulting in the plots shown in the main paper please consider checking the [comparison code](./main_paper_codes/Test_interactionModel_Both.py).
 
 
+# Appendix related comparisons
+
+## [Comparison of data-driven acrhitectures](./appendix_codes)
+
+
+
+
