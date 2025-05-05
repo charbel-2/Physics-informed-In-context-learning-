@@ -31,7 +31,7 @@ df2 = pd.read_csv(csv_file_path_sponge2)
 df3 = pd.read_csv(csv_file_path_sponge3)
 
 
-# Select relevant columns for modeling: positions, velocities, and torques
+# Select relevant columns for modeling: positions, velocities, and forces
 joint_x = ['franka_ee_pose_x']
 joint_y = ['franka_ee_pose_y']
 joint_z = ['franka_ee_pose_z']
@@ -41,12 +41,12 @@ target_z = ['target_position_z']
 speed_x = ['velocity_x']
 speed_y = ['velocity_y']
 speed_z = ['velocity_z']
-torque_x = ['force_x']
-torque_y = ['force_y']
-torque_z = ['force_z']
+force_x = ['force_x']
+force_y = ['force_y']
+force_z = ['force_z']
 
 relevant_columns = joint_x + joint_y + joint_z + target_x + target_y + target_z + speed_x + speed_y + speed_z
-relevant_outputs = torque_x + torque_y + torque_z
+relevant_outputs = force_x + force_y + force_z
 
 # Filter the DataFrame for relevant columns and drop NaN values
 data = df[relevant_columns].dropna()
@@ -158,9 +158,9 @@ try:
         downsampled_relevant['acceleration_x'] = acceleration_x
         downsampled_relevant['acceleration_y'] = acceleration_y
         downsampled_relevant['acceleration_z'] = acceleration_z
-        downsampled_relevant['torque_x'] = downsampled_output['force_x'].copy()
-        downsampled_relevant['torque_y'] = downsampled_output['force_y'].copy()
-        downsampled_relevant['torque_z'] = downsampled_output['force_z'].copy()
+        downsampled_relevant['force_x'] = downsampled_output['force_x'].copy()
+        downsampled_relevant['force_y'] = downsampled_output['force_y'].copy()
+        downsampled_relevant['force_z'] = downsampled_output['force_z'].copy()
         target_acceleration_x = np.zeros_like(position_x)
         target_acceleration_y = np.zeros_like(position_x)
         target_acceleration_z = np.zeros_like(position_x)
@@ -330,7 +330,7 @@ try:
                     velocities = X_batch_norm[:, :, 6:9]
                     target_velocities = X_batch_norm[:, :, 9:12]
                     accelerations = X_batch_norm[:, :, 12:15]
-                    torques = X_batch_norm[:, :, 15:18]
+                    forces = X_batch_norm[:, :, 15:18]
 
                     
                     positions_next = X_decoder_batch_norm[:, :, 0:3].to(device)
@@ -338,7 +338,7 @@ try:
                     accelerations_next = X_decoder_batch_norm[:, :, 6:9].to(device)
 
                     # Forward pass
-                    output,J, b, k, R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, torques,
+                    output,J, b, k, R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, forces,
                                 positions_next, velocities_next, accelerations_next)
                     output = output * seq_std[:, :, -3:] + seq_mean[:, :, -3:]
                     # MSE loss
@@ -409,7 +409,7 @@ try:
                 velocities = X_batch_norm[:, :, 6:9]
                 target_velocities = X_batch_norm[:, :, 9:12]
                 accelerations = X_batch_norm[:, :, 12:15]
-                torques = X_batch_norm[:, :, 15:18]
+                forces = X_batch_norm[:, :, 15:18]
 
                 
                 positions_next = X_decoder_batch_norm[:, :, 0:3].to(device)
@@ -420,7 +420,7 @@ try:
                 optimizer.zero_grad()
 
                 # Forward pass
-                output,J, b, k, R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, torques,
+                output,J, b, k, R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, forces,
                             positions_next, velocities_next, accelerations_next)
                 stiffness.append(k.detach().cpu().numpy())
                 inertia.append(J.detach().cpu().numpy())
