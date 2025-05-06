@@ -55,7 +55,7 @@ In order to run and compare both models at the same time, resulting in the plots
 - [Comparison training](./appendix_codes/InteractionMetaModel_Data_train_comparison_architecture.py)
 - [Comparison testing](./appendix_codes/Test_interactionModel_comparison_Data_architecture.py)
 
-  This script trains and compares different data-driven architectures as explained in Appendix B. The compared [models](./appendix_codes/DataDriven_interaction_model.py) include the data-driven transformer from the main paper, its decoder-only variant, a standard LSTM, its deeper variant, DeepSets, and a Time Convolutional Network (TCN).
+  This script trains and compares different data-driven architectures as explained in Appendix B. The compared [models](./appendix_codes/DataDriven_interaction_model.py) include the data-driven transformer from the main paper, its decoder-only variant, a standard LSTM, its deeper variant, DeepSets, and a Time Convolutional Network (TCN). To run the comparison training code, we recommend creating a subfolder named "comparison_Data_architecture_ckpts/" inside the "appendix_codes/" directory. This folder will be used to store the checkpoints of all trained architectures.
 
 
 ## [Parameter tunining λₚₕᵧₛ](./appendix_codes)
@@ -63,7 +63,7 @@ In order to run and compare both models at the same time, resulting in the plots
 - [Parameter tuning λₚₕᵧₛ](./appendix_codes/InteractionMetaModel_Physics_train_old_fine_tune_lam.py)
 - [Parameter testing](appendix_codes/Test_interactionModel_fine_tune_Phy_Lam.py)
 
-This script trains the physics-informed transformer introduced in our paper, with different [λₚₕᵧₛ](./appendix_codes/PITransformer_interaction_model.py), and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model.
+This script trains the physics-informed transformer introduced in our paper, with different [λₚₕᵧₛ](./appendix_codes/PITransformer_interaction_model.py), and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model. To run the parameter tuning training code, we recommend creating a subfolder named "fine_tune_phy_Lam_ckpts//" inside the "appendix_codes/" directory. This folder will be used to store the checkpoints of all trained architectures.
 
 Due to memory constraints, we could not include the trained models used in the analyses presented in the appendix. However, the training code and configurations are available in the anonymous GitHub repository, allowing anyone to verify the results. Alternatively, you may request the trained models during the rebuttal phase, and we will be happy to provide them.
 
