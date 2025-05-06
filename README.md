@@ -65,6 +65,20 @@ In order to run and compare both models at the same time, resulting in the plots
 This script trains the physics-informed transformer introduced in our paper, with different λₚₕᵧₛ, and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model.
 
 
+# Software requirements
+
+Models were trained and tested in a conda environment utilizing Python 3.12.3 with:
+
+- pandas
+- numpy
+- pytorch
+- wandb
+- matplotlib
+- scikit-learn
+- scipy
+
+Please refer to the official [installation guide](https://www.anaconda.com/docs/tools/working-with-conda/packages/install-packages) to install the mentioned packages in your environment.
+
 
 
 
