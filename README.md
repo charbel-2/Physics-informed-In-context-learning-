@@ -44,7 +44,7 @@ Please note that the models will try to utilize "cuda" if available, if not, the
 - [Data-driven model testing](./main_paper_codes/Test_interactionModel_Physics.py)
 - [Comparision - main paper](./main_paper_codes/Test_interactionModel_Both.py)
 
-Training scripts will save a checkpoint every 200 epochs, so if you want to evaluate the performances, without waiting for the complete training to end, you can run the "Test" codes on any of the [datasets](./Datasets/). Otherwise, you may find the trained models used in the main paper, in addition to the learned parameters, in this [Hugging Face repository](https://huggingface.co/Anonymous99009/CORL_physics_in_contex_learning_ckpts/tree/main), under the "main_paper_codes" folder.
+Training scripts will save a checkpoint every 200 epochs, so if you want to evaluate the performances, without waiting for the complete training to end, you can run the "Test" codes on any of the [datasets](./Datasets/). Otherwise, you may find the trained models used in the main paper, in addition to the learned parameters, in this anonymous [Hugging Face repository](https://huggingface.co/Anonymous99009/CORL_physics_in_contex_learning_ckpts/tree/main), under the "main_paper_codes" folder.
 
 In order to run and compare both models at the same time, resulting in the plots shown in the main paper please consider checking the [comparison code](./main_paper_codes/Test_interactionModel_Both.py).
 
@@ -65,7 +65,7 @@ In order to run and compare both models at the same time, resulting in the plots
 
 This script trains the physics-informed transformer introduced in our paper, with different [λₚₕᵧₛ](./appendix_codes/PITransformer_interaction_model.py), and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model. To run the parameter tuning training code, we recommend creating a subfolder named "fine_tune_phy_Lam_ckpts/" inside the "appendix_codes/" directory. This folder will be used to store the checkpoints of all trained architectures.
 
-Due to memory constraints, we could not include in this repository the trained models used in the analyses presented in the appendix. However, the training code and configurations are available in the anonymous GitHub repository, allowing anyone to verify the results. Alternatively, you may find the saved checkpoints in this [Hugging Face repository](https://huggingface.co/Anonymous99009/CORL_physics_in_contex_learning_ckpts/tree/main), under the "appendix_codes" folder.
+Due to memory constraints, we could not include in this repository the trained models used in the analyses presented in the appendix. However, the training code and configurations are available in the anonymous GitHub repository, allowing anyone to verify the results. Alternatively, you may find the saved checkpoints in this anonymous [Hugging Face repository](https://huggingface.co/Anonymous99009/CORL_physics_in_contex_learning_ckpts/tree/main), under the "appendix_codes" folder.
 
 # Software requirements
 
