@@ -16,7 +16,7 @@ torch.cuda.manual_seed_all(SEED)
 
 
 # Set the device (GPU if available, else CPU)
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # Load the dataset
