@@ -63,7 +63,7 @@ In order to run and compare both models at the same time, resulting in the plots
 - [Parameter tuning λₚₕᵧₛ](./appendix_codes/InteractionMetaModel_Physics_train_old_fine_tune_lam.py)
 - [Parameter testing](appendix_codes/Test_interactionModel_fine_tune_Phy_Lam.py)
 
-This script trains the physics-informed transformer introduced in our paper, with different [λₚₕᵧₛ](./appendix_codes/PITransformer_interaction_model.py), and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model. To run the parameter tuning training code, we recommend creating a subfolder named "fine_tune_phy_Lam_ckpts//" inside the "appendix_codes/" directory. This folder will be used to store the checkpoints of all trained architectures.
+This script trains the physics-informed transformer introduced in our paper, with different [λₚₕᵧₛ](./appendix_codes/PITransformer_interaction_model.py), and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model. To run the parameter tuning training code, we recommend creating a subfolder named "fine_tune_phy_Lam_ckpts/" inside the "appendix_codes/" directory. This folder will be used to store the checkpoints of all trained architectures.
 
 Due to memory constraints, we could not include the trained models used in the analyses presented in the appendix. However, the training code and configurations are available in the anonymous GitHub repository, allowing anyone to verify the results. Alternatively, you may request the trained models during the rebuttal phase, and we will be happy to provide them.
 
