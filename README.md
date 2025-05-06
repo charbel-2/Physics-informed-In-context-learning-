@@ -48,22 +48,22 @@ Training scripts will save a checkpoint every 200 epochs, so if you want to eval
 
 In order to run and compare both models at the same time, resulting in the plots shown in the main paper please consider checking the [comparison code](./main_paper_codes/Test_interactionModel_Both.py).
 
-
 # Appendix related comparisons
 
 ## [Comparison of data-driven acrhitectures](./appendix_codes)
 
-- [Comparison script](./appendix_codes/InteractionMetaModel_Data_train_comparison_architecture.py)
+- [Comparison training](./appendix_codes/InteractionMetaModel_Data_train_comparison_architecture.py)
+- [Comparison testing](./appendix_codes/Test_interactionModel_comparison_Data_architecture.py)
 
   This script trains and compares different data-driven architectures as explained in Appendix B. The compared [models](./appendix_codes/DataDriven_interaction_model.py) include the data-driven transformer from the main paper, its decoder-only variant, a standard LSTM, its deeper variant, DeepSets, and a Time Convolutional Network (TCN).
 
 
-## [Fine tunining λₚₕᵧₛ](./appendix_codes)
+## [Parameter tunining λₚₕᵧₛ](./appendix_codes)
 
-- [Fine tuning script](./appendix_codes/InteractionMetaModel_Physics_train_old_fine_tune_lam.py)
+- [Parameter tuning λₚₕᵧₛ](./appendix_codes/InteractionMetaModel_Physics_train_old_fine_tune_lam.py)
+- [Parameter testing](appendix_codes/Test_interactionModel_fine_tune_Phy_Lam.py)
 
-This script trains the physics-informed transformer introduced in our paper, with different λₚₕᵧₛ, and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model.
-
+This script trains the physics-informed transformer introduced in our paper, with different [λₚₕᵧₛ](./appendix_codes/PITransformer_interaction_model.py), and evaluates the performance of different values with in-distribution and out-of-distribution scenarios, in order to assess the effect of this weight on the model.
 
 # Software requirements
 
