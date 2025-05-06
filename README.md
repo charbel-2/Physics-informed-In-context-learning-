@@ -79,6 +79,11 @@ Models were trained and tested in a conda environment utilizing Python 3.12.3 wi
 
 Please refer to the official [installation guide](https://www.anaconda.com/docs/tools/working-with-conda/packages/install-packages) to install the mentioned packages in your environment.
 
+# Hardware requirements
+
+While all scripts can run on CPU, execution may be frustratingly slow. For faster training, a GPU is highly recommended. To run the paper's examples, we used a laptop equipped with a Nvidia RTX 4080 GPU.
+You can follow the official [CUDA documentation](https://docs.nvidia.com/cuda/index.html) for the installation guide of the cuda-toolkit on your Windows or Linux PC. 
+
 
 
 
