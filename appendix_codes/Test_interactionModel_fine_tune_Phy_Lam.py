@@ -5,7 +5,7 @@ import json
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from torch.utils.data import  DataLoader, TensorDataset
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, root_mean_squared_error
+from sklearn.metrics import  r2_score
 from scipy.signal import savgol_filter
 from PITransformer_interaction_model import EnhancedTransformer , PhysicsBasedLoss
 
@@ -391,11 +391,8 @@ for lam_phy in np.arange(0.0,0.8,0.1):
 
     print('--- Metrics on Stitched Time Series (each time step unique) ---')
     j = 2
-    mse_val = mean_squared_error(stitched_y_test[start:, j], predictions_phy[-1][start:, j])
-    rmse_val = root_mean_squared_error(stitched_y_test[start:, j], predictions_phy[-1][start:, j])
-    mae_val = mean_absolute_error(stitched_y_test[start:, j], predictions_phy[-1][start:, j])
     r2_val  = r2_score(stitched_y_test[start:, j], predictions_phy[-1][start:, j])
-    print(f"Physics-Driven {lam_phy} - Z Axis: MSE: {mse_val:.4f}, RMSE: {rmse_val:.4f}, MAE: {mae_val:.4f}, R²: {r2_val:.4f}")
+    print(f"Physics-Driven {lam_phy} - Z Axis: MSE: R²: {r2_val:.4f}")
     print("-----------------------------------------------------------")
 
 
