@@ -78,6 +78,10 @@ Models were trained and tested in a conda environment utilizing Python 3.12.3 wi
 - matplotlib
 - scikit-learn
 - scipy
+- time
+- random
+- json
+- sys
 
 Please refer to the official [installation guide](https://www.anaconda.com/docs/tools/working-with-conda/packages/install-packages) to install the mentioned packages in your environment.
 
