@@ -18,7 +18,7 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED) 
 
 # Set the device (GPU if available, else CPU)
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Path to your CSV file
 csv_file_path_sponge1 = '../Test_Sponge1.csv'  
