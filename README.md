@@ -89,7 +89,7 @@ You can follow the official [CUDA documentation](https://docs.nvidia.com/cuda/in
 
 # Robot control requirements
 
-The work was tested on a Franka Emika Panda, using [ROS2 Humble](https://docs.ros.org/en/humble/index.html) on [Ubuntu 22.04](https://wiki.ubuntu.com/FocalFossa/ReleaseNotes).
+The work was tested on a Franka Emika Panda, using [ROS2 Humble](https://docs.ros.org/en/humble/index.html) on [Ubuntu 22.04](https://releases.ubuntu.com/jammy/).
 
 
 
