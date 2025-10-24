@@ -1,6 +1,6 @@
-# A Physics-Informed In-Context Learning Framework for Online Interaction Prediction in Robotic Tasks
+# A Physics-Informed In-Context Learning Framework for Online Force Prediction in Contact Tasks
 
-These are the Python scripts and datasets to train and reproduce the results of the paper "A Physics-Informed In-Context Learning Framework for Online Force Prediction in Contact Tasks". This is an anomyzied github for submission purposes. The introduced approach extends transformer-based meta learning with physically grounded inductive biased, including learnable physics parameters, physics-aware embeddings, and regularization via physics-basedd loss function. The model is trained on real-world interaction datasets collected from a robotic arm executing chirp-like trajectories against different surfaces.
+These are the Python scripts and datasets to train and reproduce the results of the paper "A Physics-Informed In-Context Learning Framework for Online Force Prediction in Contact Tasks". The introduced approach extends transformer-based meta learning with physically grounded inductive biased, including learnable physics parameters, physics-aware embeddings, and regularization via physics-basedd loss function. The model is trained on real-world interaction datasets collected from a robotic arm executing chirp-like trajectories against different surfaces.
 
 ![Figure 1: System architecture diagram](Images/transformer_architecture.png)
 
