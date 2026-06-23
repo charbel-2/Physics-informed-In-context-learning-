@@ -211,6 +211,7 @@ class EnhancedTransformerData(nn.Module):
         self.positional_encoding = HybridPositionalEncoding(n_embd, mean, std,).to(device)
         
         self.norm1 = LayerNorm(n_embd, bias=bias).to(device)  ## wrt to MARCO, this can be diffferent from encoder and decoder, here is the same.
+        self.norm2 = LayerNorm(n_embd, bias=bias).to(device)  ## wrt to MARCO, this can be diffferent from encoder and decoder, here is the same.
         
         self.encoder_layers = nn.ModuleList(
             [TransformerEncoderLayer(n_embd, n_heads, forward_expansion, dropout, bias) for _ in range(n_layers)]
@@ -253,15 +254,16 @@ class EnhancedTransformerData(nn.Module):
         x = self.EncoderEmbeding(x)
         decoder_input = self.DecoderEmbedding(decoder_input)
         
-        x = self.positional_encoding(x)
-        decoder_input = self.positional_encoding(decoder_input)
+        # x = self.positional_encoding(x)
+        # decoder_input = self.positional_encoding(decoder_input)
         
         for layer in self.encoder_layers:
             x = layer(x)
         x = self.norm1(x)
         
+        decoder_output = decoder_input
         for layer in self.decoder_layers:
             decoder_output = layer(x, decoder_input)
-        decoder_output = self.norm1(decoder_output)
+        decoder_output = self.norm2(decoder_output)
         
         return self.decoder_output(decoder_output)  # Predict based on the last time step
