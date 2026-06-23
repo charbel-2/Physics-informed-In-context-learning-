@@ -239,7 +239,7 @@ physics_params = {
     "R": criterion.R
 }
 
-model = EnhancedTransformer(input_dim=18, n_heads=num_heads, n_layers=8, n_embd=embed_dim, forward_expansion=6, 
+model = EnhancedTransformer(input_dim=18, n_heads=num_heads, n_layers=6, n_embd=embed_dim, forward_expansion=6, 
                             seq_len= seq_length,seq_len_dec= len_dec, mean= relevant_mean, std= relevant_std, physics_params= physics_params) .to(device)
 
 # Please use 'Interaction_metamodel_physics_test.pth' to run the trained model from the main paper
