@@ -341,16 +341,6 @@ class PhysicsPositionalEncoding(nn.Module):
         return   physics_encoding + data_encoding + learnable_encoding # maybe - 2*x #+ physics_encoding + 
         
 class PhysicsAwareEmbedding(nn.Module):
-    """
-    Physics-aware embedding:
-    - Combines raw features with engineered physics features:
-    * Kinetic energy
-    * Damping force
-    * Elastic force
-    * Residuals (force - modeled force)
-    - Applies learnable scaling, projection, and non-linearity
-    """
-
     def __init__(self, input_dim, n_embd, physics_params, device=device):
         """
         Physics-aware embedding layer with explicit physics-based features.
@@ -375,7 +365,7 @@ class PhysicsAwareEmbedding(nn.Module):
         self.R = physics_params["R"]
 
         # Linear transformation to project physics-enhanced features to embedding space
-        self.embedding_layer = nn.Linear(input_dim + 4, n_embd)  # Extra 4 for physics features
+        self.embedding_layer = nn.Linear(input_dim + 12, n_embd)  # Extra 4 for physics features
 
         # Physics-informed activation
         self.activation = nn.Tanh()
@@ -386,19 +376,19 @@ class PhysicsAwareEmbedding(nn.Module):
         x_weighted = x * self.weights  # Element-wise scaling
 
         # Compute explicit physics-informed features
-        acceleration_term =   self.J * (accelerations)  # (B, T, D)
-        damping_force = self.b * torch.sign(target_velocities) + self.R*target_velocities# (B, T, D)
+        kinetic_energy =   self.J * (accelerations)  # (B, T, D)
+        damping_force = self.b * torch.sign(velocities) + self.R*velocities# (B, T, D)
         elastic_force = self.k * (positions - target_positions)  # (B, T, D)
-        residual_force = interaction_forces - ( elastic_force + acceleration_term + damping_force)  # (B, T, D)
+        residual_force = interaction_forces - ( elastic_force + kinetic_energy + damping_force)  # (B, T, D)
 
         # Concatenate raw inputs with physics-based features
         physics_features = torch.cat([
-            x_weighted,  # Full 15 features
-            acceleration_term.mean(dim=-1, keepdim=True),  # Convert (B, T, 3) → (B, T, 1)
-            damping_force.mean(dim=-1, keepdim=True),  
-            elastic_force.mean(dim=-1, keepdim=True),
-            residual_force.mean(dim=-1, keepdim=True)  
-        ], dim=-1)  # (B, T, 15 + 4 = 19)
+            residual_force,
+            kinetic_energy,  # Convert (B, T, 3) → (B, T, 1)
+            damping_force ,  
+            elastic_force ,
+            x_weighted  # Full 15 features
+        ], dim=-1)   # (B, T, 15 + 4 = 19)
 
         # Apply linear transformation
         embeddings = self.embedding_layer(physics_features)
