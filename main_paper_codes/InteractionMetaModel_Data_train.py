@@ -269,7 +269,7 @@ try:
     embed_dim = 128
     num_heads = 4
 
-    model = EnhancedTransformerData(input_dim= 18, n_heads= 4, n_layers= 8, n_embd= 128, forward_expansion= 6,
+    model = EnhancedTransformerData(input_dim= 18, n_heads= 4, n_layers= 6, n_embd= 128, forward_expansion= 6,
                                         seq_len= seq_length,seq_len_dec = len_dec, mean= relevant_mean, std= relevant_std).to(device)
     
     wandb.init(project="meta-Franka-DataDriven", name=f"Data_Driven_train", reinit=True)
