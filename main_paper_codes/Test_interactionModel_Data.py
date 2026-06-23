@@ -187,7 +187,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 embed_dim = 128
 num_heads = 4
 
-model_data = EnhancedTransformerData(input_dim= 18, n_heads= num_heads, n_layers= 8, n_embd= embed_dim, forward_expansion= 6,
+model_data = EnhancedTransformerData(input_dim= 18, n_heads= num_heads, n_layers= 6, n_embd= embed_dim, forward_expansion= 6,
                                      seq_len= seq_length, mean= relevant_mean, std= relevant_std).to(device)
 
 # Load the model weights
