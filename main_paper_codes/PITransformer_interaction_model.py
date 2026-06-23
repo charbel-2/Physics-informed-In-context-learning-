@@ -412,33 +412,24 @@ class PhysicsAwareEmbedding(nn.Module):
         
 
 # Updated EnhancedTransformer class
-class EnhancedTransformer(nn.Module):    
-    """
-    Main physics-informed Transformer model.
-    Architecture:
-    - Encoder: Encodes input trajectory and physical info
-    - Decoder: Predicts future interaction forces
-    - Positional encodings are physics-informed
-    - Final layers estimate physical parameters (J, b, k, R)
-    """
-
-    def __init__(self, input_dim, n_heads, n_layers, n_embd, forward_expansion,seq_len,seq_len_dec, mean, std, physics_params,
+class EnhancedTransformer(nn.Module):
+    def __init__(self, input_dim, n_heads, n_layers, n_embd, forward_expansion,seq_len, mean, std, physics_params,
                  dropout = 0.0, bias = False, device = device):
         super(EnhancedTransformer, self).__init__()
+        # self.embedding = nn.Linear(input_dim, n_embd)
         
         self.embedding = PhysicsAwareEmbedding(input_dim, n_embd, physics_params, device)
         self.embedding_output = PhysicsAwareEmbedding(input_dim-9, n_embd, physics_params,device)
         
-        self.encoder_wte = nn.Linear(input_dim, n_embd).to(device)
         self.encoder_wpe = nn.Embedding(seq_len, n_embd).to(device)
         
-        self.decoder_wte = nn.Linear(input_dim -9, n_embd).to(device)
         self.decoder_wpe = nn.Embedding(seq_len, n_embd).to(device)
         
-        self.positional_encoding= PhysicsPositionalEncoding(n_embd, mean, std).to(device)
-        # self.positional_encoding_dec = PhysicsPositionalEncoding(n_embd, mean, std).to(device)
+        self.positional_encoding = PhysicsPositionalEncoding(n_embd, mean, std).to(device)
         
         self.norm1 = LayerNorm(n_embd, bias=bias).to(device)
+        self.norm2 = LayerNorm(n_embd, bias=bias).to(device)
+        
         self.encoder_layers = nn.ModuleList(
             [TransformerEncoderLayer(n_embd, n_heads, forward_expansion, dropout, bias) for _ in range(n_layers)]
         ).to(device)
@@ -446,12 +437,12 @@ class EnhancedTransformer(nn.Module):
             [TransformerDecoderLayer(n_embd, n_heads, forward_expansion, dropout, bias) for _ in range(n_layers)]
         ).to(device)
 
-        self.stiffness_operator = nn.Linear(n_embd, 3, bias=True).to(device) 
-        self.inertia_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
-        self.damping_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
-        self.random_operator = nn.Linear(n_embd, 3, bias=True).to(device)  
+        self.stiffness_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
+        self.inertia_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
+        self.damping_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
+        self.random_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
         
-        self.decoder_output = nn.Linear(n_embd, 3, bias= True).to(device)  
+        self.decoder_output = nn.Linear(n_embd, 3, bias= True).to(device)  # Output layer for torque prediction
         
     def DecoderEmbedding(self, decoder_input):
         
@@ -462,10 +453,9 @@ class EnhancedTransformer(nn.Module):
         pos_decoder = torch.arange(0, seq_len_decoder, dtype=torch.long, device=device).unsqueeze(0)
         
         pos_emb_decoder = self.decoder_wpe(pos_decoder)
-        tok_emb_decoder = self.decoder_wte(decoder_input)
 
         # Combine physics-aware embedding and positional embedding
-        return   tok_emb_decoder + pos_emb_decoder
+        return  pos_emb_decoder
 
     def EncoderEmbeding(self, x):
         
@@ -475,47 +465,47 @@ class EnhancedTransformer(nn.Module):
         # Positional embedding
         pos_encoder= torch.arange(0, seq_len_encoder, dtype=torch.long, device=device).unsqueeze(0)
         pos_emb_encoder = self.encoder_wpe(pos_encoder)
-        tok_emb_encoder = self.encoder_wte(x)
 
         # Combine physics-aware embedding and positional embedding
-        return  tok_emb_encoder + pos_emb_encoder
+        return   pos_emb_encoder
 
-    def forward(self, x, decoder_input, positions, target_positions, velocities, target_velocities, accelerations, forces,
+    def forward(self, x, decoder_input, positions, target_positions, velocities, target_velocities, accelerations, torques,
                 positions_next, velocities_next, accelerations_next):
-
+        
         physics_features = torch.cat(
-            [forces, accelerations, target_velocities, velocities, target_positions, positions], dim=-1
+            [positions, target_positions, velocities, target_velocities, accelerations, torques], dim=-1
         ) 
         
         physics_features_decoder = torch.cat(
-            [accelerations_next, velocities_next, positions_next], dim=-1
+            [ positions_next, velocities_next, accelerations_next], dim=-1
         )
         
-        physics_emb_encoder = self.embedding(x, positions, target_positions, velocities, target_velocities, accelerations, forces).to(device)
-        physics_emb_decoder = self.embedding_output(decoder_input, positions, target_positions, velocities, target_velocities, accelerations_next, forces).to(device)
+  
+        # physics_emb_encoder = self.embedding(x,torques, accelerations, target_velocities, velocities, target_positions, positions).to(device)
+        physics_emb_encoder = self.embedding(x,positions, target_positions, velocities, target_velocities, accelerations, torques).to(device)
+        # physics_emb_decoder = self.embedding_output(decoder_input, torques, accelerations_next, target_velocities, velocities, target_positions, positions).to(device)
+        physics_emb_decoder = self.embedding_output(decoder_input, positions, target_positions, velocities, target_velocities, accelerations, torques).to(device)
         
-        x = self.EncoderEmbeding(x) + physics_emb_encoder
+        x = self.EncoderEmbeding(x) + physics_emb_encoder 
         decoder_input = self.DecoderEmbedding(decoder_input) + physics_emb_decoder
-        
-        x = self.positional_encoding(x, physics_features)
-        decoder_input = self.positional_encoding(decoder_input, physics_features)
-        
+        # physics_features = self.EncoderEmbeding(physics_features)
+       
         for layer in self.encoder_layers:
             x = layer(x, physics_features)
-        x_params = x
         x = self.norm1(x)
 
+        decoder_output = decoder_input
         for layer in self.decoder_layers:
-            decoder_output = layer(x, decoder_input, physics_features, physics_features_decoder)
-            decoder_output_params = layer(x_params, decoder_input, physics_features, physics_features_decoder)
+            decoder_output = layer(x, decoder_output, physics_features, physics_features_decoder)
+
+        decoder_output = self.norm2(decoder_output)
+                
+        estimated_stiffness = F.softplus(torch.mean(self.stiffness_operator(torch.mean(decoder_output, dim=1)), dim=0))
+        estimated_inertia =   F.softplus(torch.mean(self.inertia_operator(torch.mean(decoder_output, dim=1)), dim=0))
+        estimated_damping =   F.softplus(torch.mean(self.damping_operator(torch.mean(decoder_output, dim=1)), dim=0))
+        estimated_random =    F.softplus(torch.mean(self.random_operator(torch.mean(decoder_output, dim=1)), dim=0))
         
-        estimated_stiffness = F.softplus(torch.mean(self.stiffness_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
-        estimated_inertia = F.softplus(torch.mean(self.inertia_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
-        estimated_damping = F.softplus(torch.mean(self.damping_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
-        estimated_damping2 = F.softplus(torch.mean(self.random_operator(torch.mean(decoder_output_params, dim=1)), dim=0))
-        
-        decoder_output = self.norm1(decoder_output)
-        
+        return self.decoder_output(decoder_output),estimated_inertia, estimated_damping,estimated_stiffness, estimated_random  # Predict based on the last time step
         
         
         
