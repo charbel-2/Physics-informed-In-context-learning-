@@ -210,8 +210,8 @@ class EnhancedTransformerData(nn.Module):
         
         self.positional_encoding = HybridPositionalEncoding(n_embd, mean, std,).to(device)
         
-        self.norm1 = LayerNorm(n_embd, bias=bias).to(device)  ## wrt to MARCO, this can be diffferent from encoder and decoder, here is the same.
-        self.norm2 = LayerNorm(n_embd, bias=bias).to(device)  ## wrt to MARCO, this can be diffferent from encoder and decoder, here is the same.
+        self.norm1 = LayerNorm(n_embd, bias=bias).to(device)  
+        self.norm2 = LayerNorm(n_embd, bias=bias).to(device)  
         
         self.encoder_layers = nn.ModuleList(
             [TransformerEncoderLayer(n_embd, n_heads, forward_expansion, dropout, bias) for _ in range(n_layers)]
