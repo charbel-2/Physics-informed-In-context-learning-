@@ -142,6 +142,35 @@ class PhysicsInformedSelfAttention(nn.Module):
         y = self.resid_dropout(x)  # projection already in mha!
         return y
 
+class PhysicsInformedSelfAttentionDecoder(nn.Module):
+    def __init__(self, d_model, n_heads, physics_dim=9, dropout=0.0, causal=False, bias=False):
+        super().__init__()
+        self.mha = nn.MultiheadAttention(d_model, n_heads, bias=bias, dropout=dropout, batch_first=True)
+        self.physics_projection = nn.Linear(physics_dim, d_model, bias=False)  # Project physics features
+        self.causal = causal
+        self.resid_dropout = nn.Dropout(dropout)
+
+    def forward(self, x, physics_features):
+        """
+        x: Tensor of shape (batch_size, seq_length, d_model)
+        physics_features: Tensor of shape (batch_size, seq_length, physics_dim)
+        """
+        seq_len = x.shape[1]
+
+        # Compute physics bias and apply it to the keys
+        physics_bias = self.physics_projection(physics_features)  # (batch_size, seq_length, d_model)
+        key_with_physics = x + physics_bias
+        
+        if self.causal:
+            seq_len = x.shape[1]
+            mask = nn.Transformer.generate_square_subsequent_mask(seq_len, device=x.device)
+            x = self.mha(key_with_physics, key_with_physics, key_with_physics, attn_mask=mask, is_causal=True)[0]
+        else:
+            x = self.mha(key_with_physics, key_with_physics, key_with_physics, is_causal=False)[0]
+        #y = self.resid_dropout(self.c_proj(x))
+        y = self.resid_dropout(x)  # projection already in mha!
+        return y
+
 
 class PhysicsInformedCrossAttention(nn.Module):
     """
@@ -182,15 +211,10 @@ class PhysicsInformedCrossAttention(nn.Module):
 
 
 class TransformerEncoderLayer(nn.Module):
-    """
-    A full encoder block:
-    - Physics-informed self-attention
-    - LayerNorm and MLP block
-    - Skip connections
-    """
     def __init__(self, embed_dim, num_heads, forward_expansion, dropout =0.0, bias = False):
         super(TransformerEncoderLayer, self).__init__()
         self.attention = PhysicsInformedSelfAttention(embed_dim, num_heads, dropout= dropout, causal=False, bias= bias )
+        # self.attention = SelfAttention(embed_dim, num_heads, dropout= dropout,causal= False, bias= bias)
         self.norm1 = LayerNorm(embed_dim, bias=bias)
         self.norm2 = LayerNorm(embed_dim, bias= bias)
         self.mlp = MLP(embed_dim)
@@ -202,14 +226,14 @@ class TransformerEncoderLayer(nn.Module):
 
 
     def forward(self, x, physics_features):
-        # Self-attention within the encoder layer
-        norm1 = self.norm1(x)  # Apply normalization before self-attention
+        norm1 = self.norm1(x)
         attention = self.attention(norm1,physics_features)
+        # attention = self.attention(norm1)
         x = attention+x
-        # MLP
-        norm2 = self.norm2(x)  # Apply normalization before MLP
+        norm2 = self.norm2(x)
         mlp1 = self.mlp(norm2)
         x = x + mlp1
+
         return x
     
 def generate_causal_mask(seq_len):
@@ -220,15 +244,12 @@ def generate_causal_mask(seq_len):
 
 # Transformer Decoder Layer with Cross-Attention
 class TransformerDecoderLayer(nn.Module):
-    """
-    Decoder block with:
-    - Physics-aware self-attention and cross-attention
-    - LayerNorms and MLP for final processing
-    """
     def __init__(self, embed_dim, num_heads, forward_expansion, dropout = 0.0, bias = False):
         super(TransformerDecoderLayer, self).__init__()
-        self.self_attention = PhysicsInformedSelfAttention(embed_dim, num_heads, dropout= dropout, causal= True)  # Self-attention in decoder
+        self.self_attention = PhysicsInformedSelfAttentionDecoder(embed_dim, num_heads, dropout= dropout, causal= True)  # Self-attention in decoder
         self.cross_attention = PhysicsInformedCrossAttention(embed_dim, num_heads, dropout= dropout, causal= False)  # Cross-attention with encoder output
+
+
         self.norm1 = LayerNorm(embed_dim, bias=bias)
         self.norm2 = LayerNorm(embed_dim, bias=bias)
         self.norm3 = LayerNorm(embed_dim, bias=bias)
@@ -243,17 +264,15 @@ class TransformerDecoderLayer(nn.Module):
     def forward(self, x, decoder_input, physics_features, physics_features_decoder):
         # Self-attention within the decoder layer
         norm1= self.norm1(decoder_input)  # Apply normalization before self-attention
-        self_attention = self.self_attention(norm1, physics_features)
+        self_attention = self.self_attention(norm1, physics_features_decoder)
         decoder_input= self_attention + decoder_input
-        # Cross-attention
-        norm2 = self.norm2(decoder_input)  # Apply normalization before cross-attention
+        norm2 = self.norm2(decoder_input)
         cross_attention = self.cross_attention(x, norm2, physics_features, physics_features_decoder)
         decoder_output = cross_attention  + decoder_input
         # MLP
         norm3 = self.norm3(decoder_output)  # Apply normalization before MLP
         mlp1 = self.mlp(norm3)
         decoder_output = mlp1 + decoder_output
-        
         return decoder_output
 
 
