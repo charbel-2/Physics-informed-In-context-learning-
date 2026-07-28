@@ -4,18 +4,44 @@ from torch.nn import functional as F
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+class PhysicsParamEstimator(nn.Module):
+
+    def __init__(self, n_channels=18, hidden=256, use_dc=False):
+        super().__init__()
+        self.use_dc = use_dc                                      # NEW
+        d = n_channels * n_channels + (9 if use_dc else 0)        # NEW
+        self.feat_norm = nn.LayerNorm(d)
+        self.trunk = nn.Sequential(nn.Linear(d, hidden), nn.GELU(),
+                                   nn.Linear(hidden, hidden), nn.GELU())
+        self.inertia_operator   = nn.Linear(hidden, 3).to(device)
+        self.damping_operator   = nn.Linear(hidden, 3).to(device)
+        self.stiffness_operator = nn.Linear(hidden, 3).to(device)
+        self.random_operator    = nn.Linear(hidden, 3).to(device)
+        # self.offset_operator    = nn.Linear(hidden, 3).to(device)            # NEW
+
+    def summary(self, x):
+        xc = x - x.mean(dim=1, keepdim=True)
+        C = torch.einsum('bti,btj->bij', xc, xc) / xc.size(1)     # (B, 18, 18)
+        C = torch.sign(C) * torch.log1p(C.abs())                  # compress the dynamic range
+        feats = C.flatten(1)                                      # (B, 324)
+        return self.feat_norm(feats)
+
+    def forward(self, x):
+        h = self.trunk(self.summary(x))
+        J = F.softplus(self.inertia_operator(h))
+        b = (self.damping_operator(h))
+        k = F.softplus(self.stiffness_operator(h))
+        R = (self.random_operator(h))
+        # c = self.offset_operator(h) 
+        return J, b, k, R
+
+
 class Swish(nn.Module):
-    """
-    Swish activation function: x * sigmoid(x), a smooth non-linearity often used in place of ReLU.
-    """
-    
     def forward(self, x):
         return x * torch.sigmoid(x)
     
 class LayerNorm(nn.Module):
-    """ 
-    LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False 
-    """
+    """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
 
     def __init__(self, ndim, bias):
         super().__init__()
@@ -26,9 +52,6 @@ class LayerNorm(nn.Module):
         return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
     
 class MLP(nn.Module):
-    """
-    Feed-forward sub-layer in Transformer blocks: expands, applies GELU, projects back, and adds dropout.
-    """
 
     def __init__(self, d_model, dropout=0.15, bias=False):
         super().__init__()
@@ -46,15 +69,6 @@ class MLP(nn.Module):
         
 
 class PhysicsBasedLoss(nn.Module):
-    """
-    Custom loss integrating physics-informed constraints into training.
-    Includes:
-    - MSE between predicted and actual forces
-    - Physics-consistent force computation using estimated J, b, k, R
-    - A penalty on physical parameters if they fall below defined bounds
-    """
-
-
     def __init__(self,lambda_phy, lambda_smooth = 0.2, lambda_traj = 0.1, initial_params=None, lower_bounds=None, device = device):
         super(PhysicsBasedLoss, self).__init__()
         
@@ -65,56 +79,32 @@ class PhysicsBasedLoss(nn.Module):
         self.lambda_smooth = lambda_smooth
         self.lambda_traj = lambda_traj
 
-        self.J = nn.Parameter(torch.tensor(initial_params['inertia'], dtype=torch.float32, device= self.device), requires_grad=False)
-        self.b = nn.Parameter(torch.tensor(initial_params['damping'], dtype=torch.float32, device= self.device), requires_grad=False)
-        self.k = nn.Parameter(torch.tensor(initial_params['stiffness'], dtype=torch.float32, device= self.device), requires_grad=False)
-        self.R = nn.Parameter(torch.tensor(initial_params['damping2'], dtype=torch.float32, device= self.device), requires_grad = False)
-        self.lower_bounds = {k: torch.tensor(v, dtype=torch.float32, device= self.device) for k, v in lower_bounds.items()}
-
         # Getters to share the parameters with other classes
     
 
-    def forward(self,predicted_force, actual_force, position, target_positions, velocity, target_velocity, acceleration, J, b, k, R):
-        mse_loss = self.mse_loss(predicted_force, actual_force).to(device)
-        phsyics_force =    J * (acceleration)  + k * (position - target_positions) + R*target_velocity + b * torch.sign(target_velocity)
-        with torch.no_grad():
-            self.J.copy_(J)
-            self.b.copy_(b)
-            self.k.copy_(k)
-            self.R.copy_(R)
+    def forward(self,predicted_torque, actual_torque, position, target_positions, velocity, target_velocity, acceleration, J, b, R, k):
         
-        physics_loss = self.mse_loss(predicted_force, phsyics_force)
+        J = J.unsqueeze(1)
+        b = b.unsqueeze(1)
+        R = R.unsqueeze(1)
+        k = k.unsqueeze(1)
+        
+        mse_loss = self.mse_loss(predicted_torque, actual_torque).to(device)
 
-        # Penalty: enforce lower bounds on the physical parameters to avoid non-physical values
-        penalty = sum(torch.sum(torch.relu(self.lower_bounds[param] - getattr(self, param)))
-                      for param in ['J', 'b', 'k', 'R'])
+        phsyics_force =    J * (acceleration)  + k * (target_positions - position) + R*(velocity) + b * torch.sign(velocity)
+
+            
+
+        physics_loss = self.mse_loss(predicted_torque, phsyics_force.detach())# + self.huber_loss(predicted_torque,phsyics_force) 
+        param_loss = self.mse_loss(actual_torque, phsyics_force)
         
-        total_loss = mse_loss + self.lambda_phy*(physics_loss + penalty )
+
+        total_loss = mse_loss + self.lambda_phy*(param_loss)# + (1-self.lambda_phy)*param_loss    #+ hubber_loss + self.lambda_smooth * smoothness_loss +
+        #return [mse_loss, physics_loss, penalty]
         return total_loss
-    
-    @property
-    def J_val(self):
-        return self.J
-
-    @property
-    def b_val(self):
-        return self.b
-
-    @property
-    def k_val(self):
-        return self.k
-
-    @property
-    def R_val(self):
-        return self.R
     
 
 class PhysicsInformedSelfAttention(nn.Module):
-    """Self-attention layer enhanced with physics context:
-    - Adds a learned projection of physics features to modify keys/values.
-    - Standard MHA used, but with physics-informed biases.
-    """
-
     def __init__(self, d_model, n_heads, physics_dim=18, dropout=0.0, causal=False, bias=False):
         super().__init__()
         self.mha = nn.MultiheadAttention(d_model, n_heads, bias=bias, dropout=dropout, batch_first=True)
@@ -139,9 +129,10 @@ class PhysicsInformedSelfAttention(nn.Module):
             x = self.mha(key_with_physics, key_with_physics, key_with_physics, attn_mask=mask, is_causal=True)[0]
         else:
             x = self.mha(key_with_physics, key_with_physics, key_with_physics, is_causal=False)[0]
+        #y = self.resid_dropout(self.c_proj(x))
         y = self.resid_dropout(x)  # projection already in mha!
         return y
-
+    
 class PhysicsInformedSelfAttentionDecoder(nn.Module):
     def __init__(self, d_model, n_heads, physics_dim=9, dropout=0.0, causal=False, bias=False):
         super().__init__()
@@ -173,11 +164,6 @@ class PhysicsInformedSelfAttentionDecoder(nn.Module):
 
 
 class PhysicsInformedCrossAttention(nn.Module):
-    """
-    Cross-attention layer integrating separate physics context from encoder and decoder:
-    - Uses different projections for encoder and decoder physics inputs
-    - Adds biases before attention computation
-    """
     def __init__(self, d_model, n_heads, physics_dim=18, dropout=0.0, causal=False, bias=False):
         super().__init__()
         self.mha = nn.MultiheadAttention(d_model, n_heads, bias=bias, dropout=dropout, batch_first=True)
@@ -202,13 +188,19 @@ class PhysicsInformedCrossAttention(nn.Module):
 
         # Add physics biases to encoder keys and values
         key_with_physics = x + physics_bias_decoder
+        # value_with_physics = encoder_output + physics_bias_encoder  # Values are also affected
         key_with_physics_encoder = encoder_output + physics_bias_encoder
- 
+        # Add physics bias to the decoder queries
+        # query_with_physics = x + physics_bias_decoder
+        
+
         # Compute cross-attention
+        # attn_output, _ = self.mha(query_with_physics, key_with_physics, value_with_physics)
         x = self.mha(key_with_physics, key_with_physics_encoder, key_with_physics_encoder, is_causal=self.causal)[0]
+        #y = self.resid_dropout(self.c_proj(x))
         y = self.resid_dropout(x)  # projection already in mha!
         return y
-
+    
 
 class TransformerEncoderLayer(nn.Module):
     def __init__(self, embed_dim, num_heads, forward_expansion, dropout =0.0, bias = False):
@@ -249,7 +241,6 @@ class TransformerDecoderLayer(nn.Module):
         self.self_attention = PhysicsInformedSelfAttentionDecoder(embed_dim, num_heads, dropout= dropout, causal= True)  # Self-attention in decoder
         self.cross_attention = PhysicsInformedCrossAttention(embed_dim, num_heads, dropout= dropout, causal= False)  # Cross-attention with encoder output
 
-
         self.norm1 = LayerNorm(embed_dim, bias=bias)
         self.norm2 = LayerNorm(embed_dim, bias=bias)
         self.norm3 = LayerNorm(embed_dim, bias=bias)
@@ -267,107 +258,29 @@ class TransformerDecoderLayer(nn.Module):
         self_attention = self.self_attention(norm1, physics_features_decoder)
         decoder_input= self_attention + decoder_input
         norm2 = self.norm2(decoder_input)
+
         cross_attention = self.cross_attention(x, norm2, physics_features, physics_features_decoder)
         decoder_output = cross_attention  + decoder_input
+        
         # MLP
         norm3 = self.norm3(decoder_output)  # Apply normalization before MLP
         mlp1 = self.mlp(norm3)
+        
         decoder_output = mlp1 + decoder_output
+
+        
         return decoder_output
 
 
-class DataAwareLearnablePositionalEncoding(nn.Module):
-    """
-    Positional encoding initialized and normalized based on data statistics (mean and std).
-    Helps bridge input data scale with positional representations for more stable learning.
-    """
-
-    def __init__(self, embed_dim, seq_length, mean, std, max_len=500, init_std=1e-6):
-        super(DataAwareLearnablePositionalEncoding, self).__init__()
-        
-        # Ensure mean and std are tensors and match embed_dim
-        if not isinstance(mean, torch.Tensor):
-            mean = torch.tensor(mean, dtype=torch.float32).to(device)
-        if not isinstance(std, torch.Tensor):
-            std = torch.tensor(std, dtype=torch.float32).to(device)
-        
-        # Expand mean and std to match embed_dim
-        mean = mean.mean().expand(embed_dim)
-        std = std.mean().expand(embed_dim)
-        
-        self.embed_dim = embed_dim
-        self.seq_length = seq_length
-        self.mean = mean
-        self.std = std
-
-        # Learnable positional encodings
-        self.positional_encoding = nn.Parameter(
-            torch.zeros(1, max_len, embed_dim).to(device)
-        )
-
-        # Data-aware initialization
-        nn.init.normal_(self.positional_encoding, mean=mean.mean().item(), std=init_std)
-
-    def forward(self, x):
-        # Slice positional encodings to match input sequence length
-        pos_enc = self.positional_encoding[:, :x.size(1)]
-        
-        # Normalize positional encodings to match training data scale
-        pos_enc = (pos_enc - self.mean) / self.std
-        
-        return x + pos_enc
-
-
-# Learnable Positional Encoding
-class LearnablePositionalEncoding(nn.Module):
-    """
-    Standard learnable positional encoding layer.
-    Adds trainable position-dependent vectors to token embeddings.
-    """
-
-    def __init__(self, d_model, max_len=200):
-        super(LearnablePositionalEncoding, self).__init__()
-        self.positional_embeddings = nn.Parameter(torch.zeros(1, max_len, d_model))
-
-    def forward(self, x):
-        seq_len = x.size(1)
-        return x + self.positional_embeddings[:, :seq_len]
-
-class PhysicsPositionalEncoding(nn.Module):
-    """
-    Composite positional encoding:
-    - Adds learnable encodings
-    - Adds data-aware encodings (normalized)
-    - Pads physics features to match dimension and includes them too
-    """
-
-    def __init__(self, d_model,mean , std, max_len=352):
-        super(PhysicsPositionalEncoding, self).__init__()
-        self.learnable_positional_encoding = LearnablePositionalEncoding(d_model, max_len)
-        self.Dataawar_encoding = DataAwareLearnablePositionalEncoding(d_model, seq_length= max_len, mean= mean, std= std, max_len= max_len)
-        self.d_model = d_model
-
-    def forward(self, x, physics_features):
-        # Standard positional encoding
-        learnable_encoding = self.learnable_positional_encoding(x)
-        data_encoding = self.Dataawar_encoding(x)
-       
-        physics_encoding = torch.nn.functional.pad(
-            physics_features, (0, self.d_model - physics_features.size(-1)), mode='constant', value=0
-        )   # Pad to match d_model
-        
-        # Combine learnable and physics-based encodings
-        return   physics_encoding + data_encoding + learnable_encoding # maybe - 2*x #+ physics_encoding + 
         
 class PhysicsAwareEmbedding(nn.Module):
-    def __init__(self, input_dim, n_embd, physics_params, device=device):
+    def __init__(self, input_dim, n_embd, device=device):
         """
         Physics-aware embedding layer with explicit physics-based features.
         
         Parameters:
         - input_dim: Number of raw input features (positions, velocities, accelerations, forces).
         - n_embd: Output embedding dimension.
-        - physics_params: Dictionary of learnable physics parameters (J, b, k, R).
         - device: Computation device.
         """
         super(PhysicsAwareEmbedding, self).__init__()
@@ -377,27 +290,26 @@ class PhysicsAwareEmbedding(nn.Module):
         # Learnable weights for each input feature (dimension-specific scaling)
         self.weights = nn.Parameter(torch.ones(input_dim), requires_grad=True)
 
-        # Physics parameters (shared with the loss function)
-        self.J = physics_params["J"]
-        self.b = physics_params["b"]
-        self.k = physics_params["k"]
-        self.R = physics_params["R"]
-
         # Linear transformation to project physics-enhanced features to embedding space
         self.embedding_layer = nn.Linear(input_dim + 12, n_embd)  # Extra 4 for physics features
 
         # Physics-informed activation
         self.activation = nn.Tanh()
 
-    def forward(self, x, positions, target_positions, velocities, target_velocities, accelerations, interaction_forces):
+    def forward(self, x, positions, target_positions, velocities, target_velocities, accelerations, interaction_forces, J, b, R, k):
 
         # Apply learnable scaling to raw input features
         x_weighted = x * self.weights  # Element-wise scaling
+        
+        J = J.unsqueeze(1)
+        b = b.unsqueeze(1)
+        R = R.unsqueeze(1)
+        k = k.unsqueeze(1)
 
         # Compute explicit physics-informed features
-        kinetic_energy =   self.J * (accelerations)  # (B, T, D)
-        damping_force = self.b * torch.sign(velocities) + self.R*velocities# (B, T, D)
-        elastic_force = self.k * (positions - target_positions)  # (B, T, D)
+        kinetic_energy =   J * (accelerations)  # (B, T, D)
+        damping_force = b * torch.sign(velocities) + R*(velocities)# (B, T, D)
+        elastic_force = k * (target_positions - positions)  # (B, T, D)
         residual_force = interaction_forces - ( elastic_force + kinetic_energy + damping_force)  # (B, T, D)
 
         # Concatenate raw inputs with physics-based features
@@ -407,35 +319,35 @@ class PhysicsAwareEmbedding(nn.Module):
             damping_force ,  
             elastic_force ,
             x_weighted  # Full 15 features
-        ], dim=-1)   # (B, T, 15 + 4 = 19)
+        ], dim=-1).to(device=device)  # (B, T, 15 + 4 = 19)
+    
 
         # Apply linear transformation
         embeddings = self.embedding_layer(physics_features)
 
         # Apply physics-informed activation
-        embeddings = self.activation(embeddings)
+        # embeddings = self.activation(embeddings)
 
         return embeddings
-    
 
         
 
 # Updated EnhancedTransformer class
 class EnhancedTransformer(nn.Module):
-    def __init__(self, input_dim, n_heads, n_layers, n_embd, forward_expansion,seq_len, mean, std, physics_params,
+    def __init__(self, input_dim, n_heads, n_layers, n_embd, forward_expansion,seq_len,
                  dropout = 0.0, bias = False, device = device):
         super(EnhancedTransformer, self).__init__()
         # self.embedding = nn.Linear(input_dim, n_embd)
         
-        self.embedding = PhysicsAwareEmbedding(input_dim, n_embd, physics_params, device)
-        self.embedding_output = PhysicsAwareEmbedding(input_dim-9, n_embd, physics_params,device)
-        
+        self.embedding = PhysicsAwareEmbedding(input_dim, n_embd, device)
+        self.embedding_output = PhysicsAwareEmbedding(input_dim-9, n_embd,device)
+
+        self.encoder_wte = nn.Linear(input_dim, n_embd).to(device)
         self.encoder_wpe = nn.Embedding(seq_len, n_embd).to(device)
         
+        self.decoder_wte = nn.Linear(input_dim -9, n_embd).to(device)
         self.decoder_wpe = nn.Embedding(seq_len, n_embd).to(device)
-        
-        self.positional_encoding = PhysicsPositionalEncoding(n_embd, mean, std).to(device)
-        
+                
         self.norm1 = LayerNorm(n_embd, bias=bias).to(device)
         self.norm2 = LayerNorm(n_embd, bias=bias).to(device)
         
@@ -445,11 +357,8 @@ class EnhancedTransformer(nn.Module):
         self.decoder_layers = nn.ModuleList(
             [TransformerDecoderLayer(n_embd, n_heads, forward_expansion, dropout, bias) for _ in range(n_layers)]
         ).to(device)
-
-        self.stiffness_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
-        self.inertia_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
-        self.damping_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
-        self.random_operator = nn.Linear(n_embd, 3, bias=True).to(device)  # Output layer for torque prediction
+        
+        self.paremeter_estimator = PhysicsParamEstimator(input_dim).to(device=device)
         
         self.decoder_output = nn.Linear(n_embd, 3, bias= True).to(device)  # Output layer for torque prediction
         
@@ -462,9 +371,11 @@ class EnhancedTransformer(nn.Module):
         pos_decoder = torch.arange(0, seq_len_decoder, dtype=torch.long, device=device).unsqueeze(0)
         
         pos_emb_decoder = self.decoder_wpe(pos_decoder)
+        tok_emb_decoder = self.decoder_wte(decoder_input)
+        
 
         # Combine physics-aware embedding and positional embedding
-        return  pos_emb_decoder
+        return  pos_emb_decoder 
 
     def EncoderEmbeding(self, x):
         
@@ -474,9 +385,11 @@ class EnhancedTransformer(nn.Module):
         # Positional embedding
         pos_encoder= torch.arange(0, seq_len_encoder, dtype=torch.long, device=device).unsqueeze(0)
         pos_emb_encoder = self.encoder_wpe(pos_encoder)
+        tok_emb_encoder = self.encoder_wte(x)
+
 
         # Combine physics-aware embedding and positional embedding
-        return   pos_emb_encoder
+        return   pos_emb_encoder #+ tok_emb_encoder
 
     def forward(self, x, decoder_input, positions, target_positions, velocities, target_velocities, accelerations, torques,
                 positions_next, velocities_next, accelerations_next):
@@ -489,33 +402,30 @@ class EnhancedTransformer(nn.Module):
             [ positions_next, velocities_next, accelerations_next], dim=-1
         )
         
-  
+
+        J, b, k, R = self.paremeter_estimator(x)
+        
         # physics_emb_encoder = self.embedding(x,torques, accelerations, target_velocities, velocities, target_positions, positions).to(device)
-        physics_emb_encoder = self.embedding(x,positions, target_positions, velocities, target_velocities, accelerations, torques).to(device)
+        physics_emb_encoder = self.embedding(x,positions, target_positions, velocities, target_velocities, accelerations, torques,J, b, R, k).to(device)
         # physics_emb_decoder = self.embedding_output(decoder_input, torques, accelerations_next, target_velocities, velocities, target_positions, positions).to(device)
-        physics_emb_decoder = self.embedding_output(decoder_input, positions, target_positions, velocities, target_velocities, accelerations, torques).to(device)
+        physics_emb_decoder = self.embedding_output(decoder_input, positions, target_positions, velocities, target_velocities, accelerations, torques,J, b, R, k).to(device)
         
         x = self.EncoderEmbeding(x) + physics_emb_encoder 
         decoder_input = self.DecoderEmbedding(decoder_input) + physics_emb_decoder
-        # physics_features = self.EncoderEmbeding(physics_features)
-       
+
         for layer in self.encoder_layers:
             x = layer(x, physics_features)
+      
         x = self.norm1(x)
 
+        
+
+        
+        # decoder_input = self.norm1(decoder_input)
         decoder_output = decoder_input
         for layer in self.decoder_layers:
             decoder_output = layer(x, decoder_output, physics_features, physics_features_decoder)
 
         decoder_output = self.norm2(decoder_output)
                 
-        estimated_stiffness = F.softplus(torch.mean(self.stiffness_operator(torch.mean(decoder_output, dim=1)), dim=0))
-        estimated_inertia =   F.softplus(torch.mean(self.inertia_operator(torch.mean(decoder_output, dim=1)), dim=0))
-        estimated_damping =   F.softplus(torch.mean(self.damping_operator(torch.mean(decoder_output, dim=1)), dim=0))
-        estimated_random =    F.softplus(torch.mean(self.random_operator(torch.mean(decoder_output, dim=1)), dim=0))
-        
-        return self.decoder_output(decoder_output),estimated_inertia, estimated_damping,estimated_stiffness, estimated_random  # Predict based on the last time step
-        
-        
-        
-        return self.decoder_output(decoder_output),estimated_inertia, estimated_damping,estimated_stiffness, estimated_damping2  # Predict based on the last time step
+        return self.decoder_output(decoder_output),J, b, R, k  # Predict based on the last time step
