@@ -268,7 +268,7 @@ try:
         batch_size = 16
         train_loaders.append(DataLoader(train_dataset, batch_size=batch_size, shuffle=False))
         val_loaders.append(DataLoader(val_dataset, batch_size=batch_size, shuffle=False))
-    embed_dim = 128
+    embed_dim = 92
     num_heads = 4
 
     initial_params = {
@@ -285,7 +285,7 @@ try:
         'R': [1e-6, 1e-6, 1e-6]   # Lower bounds for random offset across X, Y, Z
     }
 
-    criterion = PhysicsBasedLoss(lambda_phy=0.1, initial_params=initial_params, lower_bounds=lower_bounds).to(device) 
+    criterion = PhysicsBasedLoss(lambda_phy=0.45, initial_params=initial_params, lower_bounds=lower_bounds).to(device) 
     criterion2 = nn.MSELoss()
 
     physics_params = {
@@ -296,11 +296,15 @@ try:
     }
 
     model = EnhancedTransformer(input_dim=18, n_heads=num_heads, n_layers=6, n_embd=embed_dim, forward_expansion=6, 
-                            seq_len= seq_length,seq_len_dec= len_dec, mean= relevant_mean, std= relevant_std, physics_params= physics_params) .to(device)
+                            seq_len= seq_length, device = device) .to(device)
 
     wandb.init(project="meta-Franka-PhysicsInformed", name=f"Physics_Informed_train", reinit=True)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-2)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max = 4000, eta_min=1e-6
+        )
+
     @torch.no_grad()
     # Function for estimation of the validation loss
     def estimate_loss():
@@ -322,6 +326,14 @@ try:
                 seq_std = X_batch.std(dim=1, keepdims=True) + 1e-8
                 seq_mean_decoder = X_decoder_batch.mean(dim=1, keepdims=True)
                 seq_std_decoder = X_decoder_batch.std(dim=1, keepdims=True) + 1e-8
+
+                seq_std[:,:,0:3] = torch.maximum(X_batch[:,:,0:3].std(dim=1, keepdim= True), X_batch[:,:,3:6].std(dim=1, keepdim= True)) + 1e-6
+                seq_std[:,:,3:6] = seq_std[:,:,0:3]
+
+                seq_mean_decoder[:,:,0:3] = seq_mean[:,:,3:6]
+                seq_mean_decoder[:,:,3:6] = seq_mean[:,:,9:12]
+                seq_std_decoder[:, :, 0:3] = seq_std[:, :, 3:6]
+                seq_std_decoder[:, :, 3:6] = seq_std[:, :, 9:12]
                 
                 X_batch_norm = (X_batch - seq_mean) / seq_std
                 X_decoder_batch_norm = (X_decoder_batch - seq_mean_decoder) / seq_std_decoder
@@ -340,14 +352,21 @@ try:
                 accelerations_next = X_decoder_batch_norm[:, :, 6:9].to(device)
 
                 # Forward pass
-                output,J, b, k, R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, forces,
+                output,J, b, R, k = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, forces,
                             positions_next, velocities_next, accelerations_next)
-                output = output * seq_std[:, :, -3:] + seq_mean[:, :, -3:]
-                # MSE loss
-                loss_iter = criterion2(output[:, len_dec-output_seq_len:, :].squeeze(), Y_batch[:, len_dec-output_seq_len:, :].squeeze())
+               # MSE loss
+                mse_loss = criterion2(output[:,  (len_dec - output_seq_len)+20:, :], Y_batch_norm[:, (len_dec - output_seq_len)+20:, :])
+                # mse_loss =  criterion2(output[:, len_dec-output_seq_len+30:, :].squeeze(), Y_batch_norm[:, len_dec-output_seq_len+30:, :].squeeze())
+                physics_loss = criterion(output[:, :(len_dec - output_seq_len), :], Y_batch_norm[:, :(len_dec - output_seq_len), :], positions[:, -(len_dec - output_seq_len):, :], target_positions[:, -(len_dec - output_seq_len):, :],
+                        velocities[:, -(len_dec - output_seq_len):, :], target_velocities[:, -(len_dec - output_seq_len):, :], accelerations[:, -(len_dec - output_seq_len):, :],
+                        J, b, R, k).to(device)                
+                
+                loss_iter = physics_loss + mse_loss
+                    
                 loss += loss_iter.item()
 
             loss /= num_batches[selected_idx]
+            loss = np.sqrt(loss)
             total_loss +=loss
         total_loss /= len(val_loaders)
         model.train()
@@ -396,6 +415,14 @@ try:
             seq_std = X_batch.std(dim=1, keepdims=True) + 1e-8
             seq_mean_decoder = X_decoder_batch.mean(dim=1, keepdims=True)
             seq_std_decoder = X_decoder_batch.std(dim=1, keepdims=True) + 1e-8
+
+            seq_std[:,:,0:3] = torch.maximum(X_batch[:,:,0:3].std(dim=1, keepdim= True), X_batch[:,:,3:6].std(dim=1, keepdim= True)) + 1e-6
+            seq_std[:,:,3:6] = seq_std[:,:,0:3]
+
+            seq_mean_decoder[:,:,0:3] = seq_mean[:,:,3:6]
+            seq_mean_decoder[:,:,3:6] = seq_mean[:,:,9:12]
+            seq_std_decoder[:, :, 0:3] = seq_std[:, :, 3:6]
+            seq_std_decoder[:, :, 3:6] = seq_std[:, :, 9:12]
             
             std_positions = seq_std[:,0,0:3].mean(dim = 0)
             std_target_positions = seq_std[:,0,3:6].mean(dim = 0)
@@ -422,19 +449,22 @@ try:
             optimizer.zero_grad()
 
             # Forward pass
-            output,J, b, k, R = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, forces,
+            output,J, b, R, k = model(X_batch_norm, X_decoder_batch_norm, positions, target_positions, velocities,target_velocities, accelerations, forces,
                         positions_next, velocities_next, accelerations_next)
-            stiffness.append(k.detach().cpu().numpy())
-            inertia.append(J.detach().cpu().numpy())
-            damping.append(b.detach().cpu().numpy())
-            randomparam.append(R.detach().cpu().numpy())
             
-            loss = criterion(output[:, len_dec-output_seq_len:, :].squeeze(), Y_batch_norm[:, len_dec-output_seq_len:, :].squeeze(), positions[:, len_dec-output_seq_len:, :], target_positions[:, len_dec-output_seq_len:, :],
-                            velocities[:, len_dec-output_seq_len:, :], target_velocities[:, len_dec-output_seq_len:, :], accelerations[:, len_dec-output_seq_len:, :],
-                            J, b, k, R).to(device)
-            stiffness_loss.append(criterion.k.detach().cpu().numpy())
+            
+            loss_overlap = criterion(output[:, :len_dec - output_seq_len, :], Y_batch_norm[:, :len_dec - output_seq_len, :], positions[:, -(len_dec - output_seq_len):, :], target_positions[:, -(len_dec - output_seq_len):, :],
+                            velocities[:, -(len_dec - output_seq_len):, :], target_velocities[:, -(len_dec - output_seq_len):, :], accelerations[:, -(len_dec - output_seq_len):, :],
+                            J, b, R, k).to(device)
+
+            loss_new = criterion2(output[:, len_dec - output_seq_len:, :], Y_batch_norm[:,len_dec - output_seq_len:, :]).to(device)
+                
+                
+                loss = loss_new + loss_overlap
             # Backward pass and optimization
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
             optimizer.step()
 
             # Accumulate loss
@@ -443,6 +473,7 @@ try:
 
         # Compute average loss per epoch
         avg_loss = total_loss / num_batches
+        scheduler.step()
         epoch += 1
 
 
